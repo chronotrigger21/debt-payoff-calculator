@@ -585,6 +585,37 @@
             color: #e74c3c;
         }
 
+        /* Data management styles */
+        .data-management {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-light);
+            flex-wrap: wrap;
+        }
+
+        .data-management .btn {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        #importFile {
+            display: none;
+        }
+
         @media (max-width: 600px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -683,6 +714,13 @@
                     <p>No debts added yet. Add your first debt above.</p>
                 </div>
             </div>
+
+            <div class="data-management">
+                <button class="btn btn-outline" id="exportBtn" title="Download your debts as a JSON file">Export Data</button>
+                <button class="btn btn-outline" id="importBtn" title="Load debts from a JSON file">Import Data</button>
+                <input type="file" id="importFile" accept=".json">
+                <button class="btn btn-outline btn-danger" id="clearAllBtn" title="Remove all debts">Clear All</button>
+            </div>
         </div>
 
         <!-- Strategy Selection & Calculate -->
@@ -756,10 +794,90 @@
     </div>
 
     <script>
+        // Constants
+        const STORAGE_KEY = 'debtPayoffCalculator_debts';
+
         // State
         let debts = [];
         let chart = null;
         let editingDebtId = null;
+
+        // LocalStorage functions
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(debts));
+            } catch (e) {
+                console.warn('Could not save to localStorage:', e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    debts = JSON.parse(saved);
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Could not load from localStorage:', e);
+            }
+            return false;
+        }
+
+        // Export/Import functions
+        function exportData() {
+            if (debts.length === 0) {
+                alert('No debts to export.');
+                return;
+            }
+            const dataStr = JSON.stringify(debts, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `debt-payoff-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) {
+                        throw new Error('Invalid format');
+                    }
+                    // Validate structure
+                    const valid = imported.every(d => d.name && typeof d.balance === 'number' && typeof d.apr === 'number');
+                    if (!valid) {
+                        throw new Error('Invalid debt data structure');
+                    }
+                    debts = imported;
+                    saveToLocalStorage();
+                    renderDebtList();
+                    updateCalculateButton();
+                    resultsSection.classList.remove('visible');
+                    alert(`Successfully imported ${debts.length} debt(s).`);
+                } catch (err) {
+                    alert('Error importing file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllDebts() {
+            if (debts.length === 0) return;
+            if (confirm('Are you sure you want to remove all debts? This cannot be undone.')) {
+                debts = [];
+                saveToLocalStorage();
+                renderDebtList();
+                updateCalculateButton();
+                resultsSection.classList.remove('visible');
+            }
+        }
 
         // DOM Elements
         const debtForm = document.getElementById('debtForm');
@@ -831,11 +949,28 @@
             promoFields.classList.toggle('visible', this.checked);
         });
 
+        // Data management elements
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFile = document.getElementById('importFile');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+
         // Event Listeners
         debtForm.addEventListener('submit', addDebt);
         strategySelect.addEventListener('change', updateStrategyInfo);
         calculateBtn.addEventListener('click', calculatePayoff);
         detailedScheduleToggle.addEventListener('click', toggleDetailedSchedule);
+
+        // Data management event listeners
+        exportBtn.addEventListener('click', exportData);
+        importBtn.addEventListener('click', () => importFile.click());
+        importFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importData(e.target.files[0]);
+                e.target.value = ''; // Reset for re-import
+            }
+        });
+        clearAllBtn.addEventListener('click', clearAllDebts);
 
         function toggleDetailedSchedule() {
             scheduleTableContainer.classList.toggle('visible');
@@ -873,6 +1008,7 @@
             }
 
             debts.push(debt);
+            saveToLocalStorage();
             renderDebtList();
             debtForm.reset();
             promoFields.classList.remove('visible');
@@ -881,6 +1017,7 @@
 
         function removeDebt(id) {
             debts = debts.filter(d => d.id !== id);
+            saveToLocalStorage();
             editingDebtId = null;
             renderDebtList();
             updateCalculateButton();
@@ -935,6 +1072,8 @@
                 if (debt.payment <= monthlyInterest && effectiveApr > 0) {
                     alert(`Warning: Your payment of $${debt.payment.toFixed(2)} may not cover the monthly interest of $${monthlyInterest.toFixed(2)}. Consider increasing your payment.`);
                 }
+
+                saveToLocalStorage();
             }
 
             editingDebtId = null;
@@ -1425,6 +1564,17 @@
                 }
             });
         }
+
+        // Initialize app
+        function init() {
+            if (loadFromLocalStorage()) {
+                renderDebtList();
+                updateCalculateButton();
+            }
+        }
+
+        // Run on page load
+        init();
     </script>
 </body>
 </html>
