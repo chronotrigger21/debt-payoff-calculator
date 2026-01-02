@@ -846,8 +846,12 @@
             e.preventDefault();
 
             const hasPromo = document.getElementById('hasPromoRate').checked;
-            const promoApr = hasPromo ? parseFloat(document.getElementById('promoApr').value) : null;
+            const promoAprValue = parseFloat(document.getElementById('promoApr').value);
+            const promoApr = hasPromo && !isNaN(promoAprValue) ? promoAprValue : null;
             const promoEndDate = hasPromo ? document.getElementById('promoEndDate').value : null;
+
+            // Only set hasPromo to true if we have valid promo data
+            const validPromo = hasPromo && promoApr !== null && promoEndDate;
 
             const debt = {
                 id: Date.now(),
@@ -856,9 +860,9 @@
                 balance: parseFloat(document.getElementById('balance').value),
                 apr: parseFloat(document.getElementById('apr').value),
                 payment: parseFloat(document.getElementById('minPayment').value),
-                hasPromo: hasPromo,
-                promoApr: promoApr,
-                promoEndDate: promoEndDate
+                hasPromo: validPromo,
+                promoApr: validPromo ? promoApr : null,
+                promoEndDate: validPromo ? promoEndDate : null
             };
 
             // Validate that payment covers at least the monthly interest (using current effective APR)
@@ -911,12 +915,13 @@
                 debt.payment = parseFloat(paymentInput.value) || debt.payment;
 
                 // Handle promo rate
-                const promoAprValue = promoAprInput.value;
+                const promoAprParsed = parseFloat(promoAprInput.value);
                 const promoEndValue = promoEndInput.value;
+                const validPromo = !isNaN(promoAprParsed) && promoEndValue;
 
-                if (promoAprValue !== '' && promoEndValue) {
+                if (validPromo) {
                     debt.hasPromo = true;
-                    debt.promoApr = parseFloat(promoAprValue);
+                    debt.promoApr = promoAprParsed;
                     debt.promoEndDate = promoEndValue;
                 } else {
                     debt.hasPromo = false;
@@ -955,7 +960,7 @@
 
                 // Build APR display
                 let aprDisplay = '';
-                if (debt.hasPromo && debt.promoApr !== null && debt.promoEndDate) {
+                if (debt.hasPromo && debt.promoApr !== null && !isNaN(debt.promoApr) && debt.promoEndDate) {
                     aprDisplay = `
                         <span class="apr-display">
                             <span><strong>${debt.promoApr}%</strong><span class="promo-badge">PROMO</span></span>
@@ -1041,7 +1046,7 @@
 
         function getEffectiveApr(debt, simulationDate) {
             // Check if debt has a promo rate and if we're still in the promo period
-            if (debt.hasPromo && debt.promoApr !== null && debt.promoEndDate) {
+            if (debt.hasPromo && debt.promoApr !== null && !isNaN(debt.promoApr) && debt.promoEndDate) {
                 const promoEnd = new Date(debt.promoEndDate + 'T00:00:00');
                 if (simulationDate < promoEnd) {
                     return debt.promoApr;
