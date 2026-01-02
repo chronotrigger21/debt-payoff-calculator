@@ -172,6 +172,7 @@
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
+            margin-bottom: 20px;
         }
 
         .strategy-section label {
@@ -188,6 +189,34 @@
         }
 
         .strategy-info {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .extra-payment-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .extra-payment-section label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .extra-payment-section input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 150px;
+        }
+
+        .extra-payment-section .help-text {
             font-size: 0.85rem;
             color: #666;
             font-style: italic;
@@ -271,6 +300,155 @@
             font-size: 1.1rem;
         }
 
+        /* Edit mode styles */
+        .debt-item.editing {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+        }
+
+        .debt-item .edit-fields {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+
+        .debt-item.editing .edit-fields {
+            display: grid;
+        }
+
+        .debt-item.editing .debt-info {
+            display: none;
+        }
+
+        .debt-item .edit-fields input {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .debt-item .edit-fields .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .debt-item .edit-fields .field-group label {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .debt-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #212529;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .btn-edit:hover {
+            background: #e0a800;
+        }
+
+        /* Month-by-month schedule styles */
+        .detailed-schedule {
+            margin-top: 25px;
+        }
+
+        .detailed-schedule h3 {
+            color: #34495e;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .detailed-schedule h3:hover {
+            color: #3498db;
+        }
+
+        .toggle-icon {
+            font-size: 0.8rem;
+            transition: transform 0.2s;
+        }
+
+        .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .schedule-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .schedule-table-container.visible {
+            display: block;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            padding: 10px 12px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+
+        .schedule-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+            position: sticky;
+            top: 0;
+            text-align: right;
+        }
+
+        .schedule-table th:first-child,
+        .schedule-table td:first-child {
+            text-align: left;
+        }
+
+        .schedule-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .schedule-table .debt-paid-off {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .schedule-table .principal {
+            color: #27ae60;
+        }
+
+        .schedule-table .interest {
+            color: #e74c3c;
+        }
+
         @media (max-width: 600px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -281,13 +459,23 @@
                 gap: 10px;
             }
 
-            .debt-item .btn-danger {
+            .debt-actions {
                 justify-self: end;
             }
 
-            .strategy-section {
+            .strategy-section,
+            .extra-payment-section {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            .schedule-table {
+                font-size: 0.75rem;
+            }
+
+            .schedule-table th,
+            .schedule-table td {
+                padding: 6px 8px;
             }
         }
     </style>
@@ -350,6 +538,11 @@
                     Pay off highest interest debts first to minimize total interest paid.
                 </span>
             </div>
+            <div class="extra-payment-section">
+                <label for="extraPayment">Extra Monthly Payment:</label>
+                <input type="number" id="extraPayment" placeholder="0" min="0" step="0.01" value="0">
+                <span class="help-text">Additional amount beyond minimum payments to accelerate payoff.</span>
+            </div>
             <div style="margin-top: 20px;">
                 <button class="btn btn-success" id="calculateBtn" disabled>Calculate Payoff Plan</button>
             </div>
@@ -386,6 +579,19 @@
                 <h3>Payoff Order</h3>
                 <div id="scheduleList"></div>
             </div>
+
+            <div class="detailed-schedule">
+                <h3 id="detailedScheduleToggle">
+                    <span class="toggle-icon" id="toggleIcon">▶</span>
+                    Month-by-Month Payment Schedule
+                </h3>
+                <div class="schedule-table-container" id="scheduleTableContainer">
+                    <table class="schedule-table">
+                        <thead id="scheduleTableHead"></thead>
+                        <tbody id="scheduleTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -393,6 +599,7 @@
         // State
         let debts = [];
         let chart = null;
+        let editingDebtId = null;
 
         // DOM Elements
         const debtForm = document.getElementById('debtForm');
@@ -402,6 +609,10 @@
         const strategySelect = document.getElementById('strategy');
         const strategyInfo = document.getElementById('strategyInfo');
         const resultsSection = document.getElementById('resultsSection');
+        const extraPaymentInput = document.getElementById('extraPayment');
+        const detailedScheduleToggle = document.getElementById('detailedScheduleToggle');
+        const scheduleTableContainer = document.getElementById('scheduleTableContainer');
+        const toggleIcon = document.getElementById('toggleIcon');
 
         // Strategy descriptions
         const strategyDescriptions = {
@@ -413,6 +624,12 @@
         debtForm.addEventListener('submit', addDebt);
         strategySelect.addEventListener('change', updateStrategyInfo);
         calculateBtn.addEventListener('click', calculatePayoff);
+        detailedScheduleToggle.addEventListener('click', toggleDetailedSchedule);
+
+        function toggleDetailedSchedule() {
+            scheduleTableContainer.classList.toggle('visible');
+            toggleIcon.classList.toggle('expanded');
+        }
 
         function addDebt(e) {
             e.preventDefault();
@@ -440,11 +657,46 @@
 
         function removeDebt(id) {
             debts = debts.filter(d => d.id !== id);
+            editingDebtId = null;
             renderDebtList();
             updateCalculateButton();
             if (debts.length === 0) {
                 resultsSection.classList.remove('visible');
             }
+        }
+
+        function startEditDebt(id) {
+            editingDebtId = id;
+            renderDebtList();
+        }
+
+        function cancelEditDebt() {
+            editingDebtId = null;
+            renderDebtList();
+        }
+
+        function saveEditDebt(id) {
+            const nameInput = document.getElementById(`edit-name-${id}`);
+            const balanceInput = document.getElementById(`edit-balance-${id}`);
+            const aprInput = document.getElementById(`edit-apr-${id}`);
+            const paymentInput = document.getElementById(`edit-payment-${id}`);
+
+            const debt = debts.find(d => d.id === id);
+            if (debt) {
+                debt.name = nameInput.value || debt.name;
+                debt.balance = parseFloat(balanceInput.value) || debt.balance;
+                debt.apr = parseFloat(aprInput.value) || debt.apr;
+                debt.payment = parseFloat(paymentInput.value) || debt.payment;
+
+                // Validate payment covers interest
+                const monthlyInterest = (debt.balance * (debt.apr / 100)) / 12;
+                if (debt.payment <= monthlyInterest) {
+                    alert(`Warning: Your payment of $${debt.payment.toFixed(2)} may not cover the monthly interest of $${monthlyInterest.toFixed(2)}. Consider increasing your payment.`);
+                }
+            }
+
+            editingDebtId = null;
+            renderDebtList();
         }
 
         function renderDebtList() {
@@ -455,8 +707,10 @@
 
             emptyState.style.display = 'none';
 
-            const debtItemsHtml = debts.map(debt => `
-                <div class="debt-item">
+            const debtItemsHtml = debts.map(debt => {
+                const isEditing = editingDebtId === debt.id;
+                return `
+                <div class="debt-item ${isEditing ? 'editing' : ''}" data-id="${debt.id}">
                     <div class="debt-info">
                         <span><strong>${debt.name}</strong></span>
                         <span class="debt-type ${debt.type}">${debt.type.replace('-', ' ')}</span>
@@ -464,9 +718,35 @@
                         <span>APR: <strong>${debt.apr}%</strong></span>
                         <span>Payment: <strong>$${debt.payment}/mo</strong></span>
                     </div>
-                    <button class="btn btn-danger" onclick="removeDebt(${debt.id})">Remove</button>
+                    <div class="edit-fields">
+                        <div class="field-group">
+                            <label>Name</label>
+                            <input type="text" id="edit-name-${debt.id}" value="${debt.name}">
+                        </div>
+                        <div class="field-group">
+                            <label>Balance ($)</label>
+                            <input type="number" id="edit-balance-${debt.id}" value="${debt.balance}" min="0" step="0.01">
+                        </div>
+                        <div class="field-group">
+                            <label>APR (%)</label>
+                            <input type="number" id="edit-apr-${debt.id}" value="${debt.apr}" min="0" max="100" step="0.01">
+                        </div>
+                        <div class="field-group">
+                            <label>Payment ($)</label>
+                            <input type="number" id="edit-payment-${debt.id}" value="${debt.payment}" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="debt-actions">
+                        ${isEditing ? `
+                            <button class="btn btn-primary" onclick="saveEditDebt(${debt.id})">Save</button>
+                            <button class="btn btn-secondary" onclick="cancelEditDebt()">Cancel</button>
+                        ` : `
+                            <button class="btn btn-edit" onclick="startEditDebt(${debt.id})">Edit</button>
+                            <button class="btn btn-danger" onclick="removeDebt(${debt.id})">Remove</button>
+                        `}
+                    </div>
                 </div>
-            `).join('');
+            `}).join('');
 
             // Remove old debt items but keep empty state
             const existingItems = debtList.querySelectorAll('.debt-item');
@@ -487,12 +767,13 @@
             if (debts.length === 0) return;
 
             const strategy = strategySelect.value;
-            const result = simulatePayoff(debts, strategy);
+            const extraMonthlyPayment = parseFloat(extraPaymentInput.value) || 0;
+            const result = simulatePayoff(debts, strategy, extraMonthlyPayment);
 
             displayResults(result);
         }
 
-        function simulatePayoff(originalDebts, strategy) {
+        function simulatePayoff(originalDebts, strategy, extraMonthlyPayment = 0) {
             // Deep copy debts for simulation
             let simDebts = originalDebts.map(d => ({
                 ...d,
@@ -512,10 +793,10 @@
             }
 
             const monthlyData = [];
+            const detailedSchedule = [];
             let month = 0;
             const maxMonths = 360; // 30 years max
-            let totalPayment = simDebts.reduce((sum, d) => sum + d.payment, 0);
-            let extraPayment = 0;
+            let rolledOverPayment = 0; // Payment from paid-off debts
 
             // Record initial state
             monthlyData.push({
@@ -526,10 +807,25 @@
 
             while (simDebts.some(d => !d.paidOff) && month < maxMonths) {
                 month++;
-                let availableExtra = extraPayment;
+                let availableExtra = rolledOverPayment + extraMonthlyPayment;
+                const monthDetail = {
+                    month,
+                    payments: []
+                };
 
                 for (let debt of simDebts) {
-                    if (debt.paidOff) continue;
+                    if (debt.paidOff) {
+                        monthDetail.payments.push({
+                            name: debt.name,
+                            payment: 0,
+                            principal: 0,
+                            interest: 0,
+                            balance: 0,
+                            paidOff: true,
+                            paidOffThisMonth: false
+                        });
+                        continue;
+                    }
 
                     // Calculate monthly interest
                     const monthlyRate = debt.apr / 100 / 12;
@@ -543,23 +839,45 @@
                     let payment = debt.payment;
 
                     // Apply extra payment to first non-paid debt (based on strategy order)
-                    if (availableExtra > 0 && simDebts.filter(d => !d.paidOff)[0].id === debt.id) {
+                    const isTargetDebt = simDebts.filter(d => !d.paidOff)[0].id === debt.id;
+                    if (availableExtra > 0 && isTargetDebt) {
                         payment += availableExtra;
                         availableExtra = 0;
                     }
 
+                    let actualPayment = payment;
+                    let principal = 0;
+                    let paidOffThisMonth = false;
+
                     if (payment >= debt.currentBalance) {
                         // Debt is paid off
-                        debt.totalPaid += debt.currentBalance;
-                        extraPayment += debt.payment; // This payment now rolls over
+                        actualPayment = debt.currentBalance;
+                        principal = actualPayment - interest;
+                        debt.totalPaid += actualPayment;
+                        rolledOverPayment += debt.payment; // This payment now rolls over
                         debt.currentBalance = 0;
                         debt.paidOff = true;
                         debt.payoffMonth = month;
+                        paidOffThisMonth = true;
                     } else {
+                        principal = payment - interest;
                         debt.currentBalance -= payment;
                         debt.totalPaid += payment;
+                        actualPayment = payment;
                     }
+
+                    monthDetail.payments.push({
+                        name: debt.name,
+                        payment: actualPayment,
+                        principal: Math.max(0, principal),
+                        interest: interest,
+                        balance: debt.currentBalance,
+                        paidOff: debt.paidOff,
+                        paidOffThisMonth
+                    });
                 }
+
+                detailedSchedule.push(monthDetail);
 
                 // Record state at end of month
                 monthlyData.push({
@@ -577,6 +895,7 @@
 
             return {
                 monthlyData,
+                detailedSchedule,
                 totalMonths: month,
                 totalDebt,
                 totalInterest,
@@ -617,8 +936,67 @@
                 `;
             }).join('');
 
+            // Render detailed schedule
+            renderDetailedSchedule(result);
+
             resultsSection.classList.add('visible');
             resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderDetailedSchedule(result) {
+            const thead = document.getElementById('scheduleTableHead');
+            const tbody = document.getElementById('scheduleTableBody');
+
+            // Reset toggle state
+            scheduleTableContainer.classList.remove('visible');
+            toggleIcon.classList.remove('expanded');
+
+            // Build header - Month, then for each debt: Payment, Principal, Interest, Balance
+            const debtNames = result.debts.map(d => d.name);
+            let headerHtml = '<tr><th>Month</th>';
+            debtNames.forEach(name => {
+                headerHtml += `<th>${name}<br><small>Payment</small></th>`;
+                headerHtml += `<th><small>Principal</small></th>`;
+                headerHtml += `<th><small>Interest</small></th>`;
+                headerHtml += `<th><small>Balance</small></th>`;
+            });
+            headerHtml += '<th>Total Balance</th></tr>';
+            thead.innerHTML = headerHtml;
+
+            // Build body rows
+            let bodyHtml = '';
+            result.detailedSchedule.forEach(monthData => {
+                bodyHtml += `<tr>`;
+                bodyHtml += `<td><strong>${monthData.month}</strong></td>`;
+
+                let totalBalance = 0;
+                monthData.payments.forEach(p => {
+                    totalBalance += p.balance;
+                    if (p.paidOff && !p.paidOffThisMonth) {
+                        // Already paid off in previous month
+                        bodyHtml += `<td class="debt-paid-off">-</td>`;
+                        bodyHtml += `<td class="debt-paid-off">-</td>`;
+                        bodyHtml += `<td class="debt-paid-off">-</td>`;
+                        bodyHtml += `<td class="debt-paid-off">$0</td>`;
+                    } else if (p.paidOffThisMonth) {
+                        // Paid off this month
+                        bodyHtml += `<td class="debt-paid-off">$${p.payment.toFixed(2)}</td>`;
+                        bodyHtml += `<td class="principal">$${p.principal.toFixed(2)}</td>`;
+                        bodyHtml += `<td class="interest">$${p.interest.toFixed(2)}</td>`;
+                        bodyHtml += `<td class="debt-paid-off">PAID OFF</td>`;
+                    } else {
+                        bodyHtml += `<td>$${p.payment.toFixed(2)}</td>`;
+                        bodyHtml += `<td class="principal">$${p.principal.toFixed(2)}</td>`;
+                        bodyHtml += `<td class="interest">$${p.interest.toFixed(2)}</td>`;
+                        bodyHtml += `<td>$${p.balance.toFixed(2)}</td>`;
+                    }
+                });
+
+                bodyHtml += `<td><strong>$${totalBalance.toFixed(2)}</strong></td>`;
+                bodyHtml += `</tr>`;
+            });
+
+            tbody.innerHTML = bodyHtml;
         }
 
         function renderChart(result) {
